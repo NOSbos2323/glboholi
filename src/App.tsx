@@ -24,29 +24,8 @@ const PageLoader = () => (
 );
 
 function App() {
-  // Initialize routes conditionally
-  const [tempoRoutes, setTempoRoutes] = React.useState<any[]>([]);
-
-  React.useEffect(() => {
-    const loadRoutes = async () => {
-      if (import.meta.env.VITE_TEMPO) {
-        try {
-          const routesModule = await import("tempo-routes");
-          setTempoRoutes(routesModule.default || []);
-        } catch (error) {
-          console.log("Tempo routes not available");
-          setTempoRoutes([]);
-        }
-      }
-    };
-    loadRoutes();
-  }, []);
-
   return (
     <div className="min-h-screen bg-background">
-      {/* For the tempo routes */}
-      {import.meta.env.VITE_TEMPO && useRoutes(tempoRoutes)}
-
       <Suspense fallback={<PageLoader />}>
         <Routes>
           <Route path="/home" element={<Home />} />
