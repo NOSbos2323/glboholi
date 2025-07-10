@@ -1,19 +1,22 @@
 import React from "react";
 import { Routes, Route, useRoutes } from "react-router-dom";
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, useState, useEffect } from "react";
 import { createLazyComponent } from "./utils/performance";
 
-// Import tempo routes conditionally
-let routes: any = null;
-if (import.meta.env.VITE_TEMPO) {
-  try {
-    routes = await import("tempo-routes")
-      .then((m) => m.default)
-      .catch(() => null);
-  } catch {
-    routes = null;
-  }
-}
+// Tempo routes will be loaded dynamically
+const useTempoRoutes = () => {
+  const [routes, setRoutes] = useState(null);
+
+  useEffect(() => {
+    if (import.meta.env.VITE_TEMPO) {
+      import("tempo-routes")
+        .then((m) => setRoutes(m.default))
+        .catch(() => setRoutes(null));
+    }
+  }, []);
+
+  return routes;
+};
 
 // Lazy load components for better performance
 const Home = createLazyComponent(() => import("./components/home"));
@@ -35,11 +38,13 @@ const PageLoader = () => (
 );
 
 function App() {
+  const tempoRoutes = useTempoRoutes();
+
   return (
     <div className="min-h-screen bg-background">
       <Suspense fallback={<PageLoader />}>
         {/* Tempo routes - only in development */}
-        {import.meta.env.VITE_TEMPO && routes && useRoutes(routes)}
+        {import.meta.env.VITE_TEMPO && tempoRoutes && useRoutes(tempoRoutes)}
 
         <Routes>
           <Route path="/home" element={<Home />} />
