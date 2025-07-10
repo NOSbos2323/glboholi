@@ -3,6 +3,18 @@ import { Routes, Route, useRoutes } from "react-router-dom";
 import { lazy, Suspense } from "react";
 import { createLazyComponent } from "./utils/performance";
 
+// Import tempo routes conditionally
+let routes: any = null;
+if (import.meta.env.VITE_TEMPO) {
+  try {
+    routes = await import("tempo-routes")
+      .then((m) => m.default)
+      .catch(() => null);
+  } catch {
+    routes = null;
+  }
+}
+
 // Lazy load components for better performance
 const Home = createLazyComponent(() => import("./components/home"));
 const LoginPage = createLazyComponent(
@@ -26,10 +38,16 @@ function App() {
   return (
     <div className="min-h-screen bg-background">
       <Suspense fallback={<PageLoader />}>
+        {/* Tempo routes - only in development */}
+        {import.meta.env.VITE_TEMPO && routes && useRoutes(routes)}
+
         <Routes>
           <Route path="/home" element={<Home />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/payments" element={<PaymentsPage />} />
+
+          {/* Allow tempo routes to work */}
+          {import.meta.env.VITE_TEMPO && <Route path="/tempobook/*" />}
 
           {/* Redirect root to login */}
           <Route path="/" element={<LoginPage />} />
