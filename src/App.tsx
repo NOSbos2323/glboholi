@@ -1,6 +1,5 @@
 import React from "react";
-import { Routes, Route } from "react-router-dom";
-import { useRoutes } from "react-router-dom";
+import { Routes, Route, useRoutes } from "react-router-dom";
 import { lazy, Suspense } from "react";
 import { createLazyComponent } from "./utils/performance";
 
@@ -31,11 +30,6 @@ function App() {
           <Route path="/home" element={<Home />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/payments" element={<PaymentsPage />} />
-
-          {/* Add this before the catchall route */}
-          {import.meta.env.VITE_TEMPO && (
-            <Route path="/tempobook/*" element={<div />} />
-          )}
 
           {/* Redirect root to login */}
           <Route path="/" element={<LoginPage />} />

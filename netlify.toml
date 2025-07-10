@@ -1,15 +1,9 @@
 [build]
   publish = "dist"
-  command = "npm run build-no-errors"
+  command = "npm run build"
 
 # SPA routing - catch all routes and serve index.html
 [[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200
-  force = false
-
-# Environment variables
-[build.environment]
-  NODE_VERSION = "18"
-  NPM_FLAGS = "--legacy-peer-deps"
