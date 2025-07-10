@@ -3,10 +3,11 @@ import ReactDOM from "react-dom/client";
 import App from "./App.tsx";
 import "./index.css";
 import { BrowserRouter } from "react-router-dom";
-import { registerServiceWorker, clearOldCaches } from "./utils/performance";
-
-import { TempoDevtools } from "tempo-devtools";
-TempoDevtools.init();
+import {
+  registerServiceWorker,
+  clearOldCaches,
+  preloadCriticalResources,
+} from "./utils/performance";
 
 const basename = import.meta.env.BASE_URL;
 
@@ -14,50 +15,35 @@ const basename = import.meta.env.BASE_URL;
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", async () => {
     try {
-      await registerServiceWorker();
-      await clearOldCaches();
+      // Use Promise.allSettled for better error handling
+      const [swResult, cacheResult] = await Promise.allSettled([
+        registerServiceWorker(),
+        clearOldCaches(),
+      ]);
 
-      // Preload critical resources
+      if (swResult.status === "rejected") {
+        console.warn("Service worker registration failed:", swResult.reason);
+      }
+      if (cacheResult.status === "rejected") {
+        console.warn("Cache cleanup failed:", cacheResult.reason);
+      }
+
+      // Preload critical resources with better scheduling
       if ("requestIdleCallback" in window) {
-        requestIdleCallback(() => {
-          // Preload critical images
-          const criticalImages = ["/yacin-gym-logo.png"];
-
-          criticalImages.forEach((src) => {
-            // Check if link already exists to prevent duplicates
-            const existingLink = document.querySelector(
-              `link[rel="preload"][href="${src}"]`,
-            );
-            if (!existingLink && document.head) {
-              try {
-                const link = document.createElement("link");
-                link.rel = "preload";
-                link.as = "image";
-                link.href = src;
-                link.onerror = () => {
-                  // Remove the link if it fails to load
-                  try {
-                    if (link.parentNode && link.parentNode === document.head) {
-                      document.head.removeChild(link);
-                    }
-                  } catch (removeError) {
-                    // Silently handle removal errors
-                    console.warn(
-                      "Could not remove failed preload link:",
-                      removeError,
-                    );
-                  }
-                };
-                document.head.appendChild(link);
-              } catch (error) {
-                console.warn("Failed to preload image:", src, error);
-              }
-            }
-          });
-        });
+        requestIdleCallback(
+          () => {
+            preloadCriticalResources();
+          },
+          { timeout: 2000 },
+        );
+      } else {
+        // Fallback for browsers without requestIdleCallback
+        setTimeout(() => {
+          preloadCriticalResources();
+        }, 100);
       }
     } catch (error) {
-      console.error("Service worker registration failed:", error);
+      console.error("Performance initialization failed:", error);
     }
   });
 }

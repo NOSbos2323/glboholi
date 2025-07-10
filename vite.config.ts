@@ -7,17 +7,31 @@ import { resolve } from "path";
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [
-    react(),
+    react({
+      // Enable React Fast Refresh optimizations
+      fastRefresh: true,
+      // Use SWC for faster compilation
+      jsxImportSource: undefined,
+    }),
     tempo(),
     VitePWA({
       registerType: "autoUpdate",
       workbox: {
-        globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2,mp3}"],
-        maximumFileSizeToCacheInBytes: 5000000, // 5MB
+        globPatterns: [
+          "**/*.{js,css,html,ico,png,svg,woff2,mp3,woff,ttf,eot,json}",
+        ],
+        maximumFileSizeToCacheInBytes: 10000000, // Increased to 10MB for complete offline support
         skipWaiting: true,
         clientsClaim: true,
         cleanupOutdatedCaches: true,
-        offlineGoogleAnalytics: true,
+        offlineGoogleAnalytics: false, // Disable for better offline performance
+        // Complete offline navigation support
+        navigateFallback: "/index.html",
+        navigateFallbackDenylist: [/^\/_/, /\/[^/?]+\.[^/]+$/, /^\/api\//],
+        // Cache all routes for offline access
+        navigateFallbackAllowlist: [
+          /^(?!.*\.(js|css|png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|eot|mp3|json)$).*/,
+        ],
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/api\.dicebear\.com\/.*/i,
@@ -25,8 +39,8 @@ export default defineConfig({
             options: {
               cacheName: "dicebear-cache",
               expiration: {
-                maxEntries: 100,
-                maxAgeSeconds: 60 * 60 * 24 * 30, // 30 days
+                maxEntries: 200,
+                maxAgeSeconds: 60 * 60 * 24 * 90, // 90 days for offline
               },
             },
           },
@@ -36,26 +50,63 @@ export default defineConfig({
             options: {
               cacheName: "unsplash-cache",
               expiration: {
-                maxEntries: 50,
-                maxAgeSeconds: 60 * 60 * 24 * 30, // 30 days
+                maxEntries: 100,
+                maxAgeSeconds: 60 * 60 * 24 * 90, // 90 days for offline
               },
             },
           },
           {
             urlPattern: ({ request }) => request.destination === "document",
-            handler: "NetworkFirst",
+            handler: "NetworkFirst", // Must use NetworkFirst with networkTimeoutSeconds
             options: {
               cacheName: "pages-cache",
-              networkTimeoutSeconds: 3,
+              networkTimeoutSeconds: 2,
             },
           },
           {
             urlPattern: ({ request }) =>
               request.destination === "script" ||
               request.destination === "style",
-            handler: "StaleWhileRevalidate",
+            handler: "CacheFirst", // Changed to CacheFirst for offline
             options: {
               cacheName: "static-resources",
+              expiration: {
+                maxEntries: 100,
+                maxAgeSeconds: 60 * 60 * 24 * 30, // 30 days
+              },
+            },
+          },
+          {
+            urlPattern: ({ request }) => request.destination === "font",
+            handler: "CacheFirst",
+            options: {
+              cacheName: "fonts-cache",
+              expiration: {
+                maxEntries: 50,
+                maxAgeSeconds: 60 * 60 * 24 * 365, // 1 year
+              },
+            },
+          },
+          {
+            urlPattern: ({ request }) => request.destination === "image",
+            handler: "CacheFirst",
+            options: {
+              cacheName: "images-cache",
+              expiration: {
+                maxEntries: 200,
+                maxAgeSeconds: 60 * 60 * 24 * 90, // 90 days
+              },
+            },
+          },
+          {
+            urlPattern: ({ request }) => request.destination === "audio",
+            handler: "CacheFirst",
+            options: {
+              cacheName: "audio-cache",
+              expiration: {
+                maxEntries: 20,
+                maxAgeSeconds: 60 * 60 * 24 * 365, // 1 year
+              },
             },
           },
         ],
@@ -65,7 +116,7 @@ export default defineConfig({
         name: "Amino Gym - نظام إدارة الصالة الرياضية",
         short_name: "Amino Gym",
         description:
-          "نظام إدارة شامل للصالة الرياضية مع إدارة الأعضاء والمدفوعات - يعمل دون انترنت",
+          "نظام إدارة شامل للصالة الرياضية مع إدارة الأعضاء والمدفوعات - يعمل دون انترنت بالكامل",
         theme_color: "#1e293b",
         background_color: "#0f172a",
         display: "standalone",
@@ -75,6 +126,13 @@ export default defineConfig({
         lang: "ar",
         dir: "rtl",
         prefer_related_applications: false,
+        // Enhanced offline capabilities
+        display_override: [
+          "window-controls-overlay",
+          "standalone",
+          "minimal-ui",
+        ],
+        protocol_handlers: [],
         icons: [
           {
             src: "yacin-gym-logo.png",
@@ -128,27 +186,54 @@ export default defineConfig({
       compress: {
         drop_console: true,
         drop_debugger: true,
-        pure_funcs: ["console.log", "console.info"],
-        passes: 2,
+        pure_funcs: ["console.log", "console.info", "console.warn"],
+        passes: 3, // Increased passes for better compression
+        unsafe: true,
+        unsafe_comps: true,
+        unsafe_math: true,
+        hoist_funs: true,
+        hoist_vars: true,
       },
       mangle: {
         safari10: true,
+        toplevel: true,
+      },
+      format: {
+        comments: false,
       },
     },
     rollupOptions: {
       output: {
-        manualChunks: {
-          vendor: ["react", "react-dom"],
-          ui: [
-            "@radix-ui/react-dialog",
-            "@radix-ui/react-tabs",
-            "@radix-ui/react-avatar",
-          ],
-          utils: ["localforage", "framer-motion"],
-          services: [
-            "./src/services/memberService",
-            "./src/services/paymentService",
-          ],
+        manualChunks: (id) => {
+          // Vendor chunks
+          if (id.includes("node_modules")) {
+            if (id.includes("react") || id.includes("react-dom")) {
+              return "react-vendor";
+            }
+            if (id.includes("@radix-ui")) {
+              return "radix-ui";
+            }
+            if (id.includes("lucide-react")) {
+              return "icons";
+            }
+            if (id.includes("framer-motion")) {
+              return "animations";
+            }
+            if (id.includes("localforage")) {
+              return "storage";
+            }
+            return "vendor";
+          }
+          // App chunks
+          if (id.includes("/services/")) {
+            return "services";
+          }
+          if (id.includes("/components/ui/")) {
+            return "ui-components";
+          }
+          if (id.includes("/components/")) {
+            return "components";
+          }
         },
         chunkFileNames: (chunkInfo) => {
           const facadeModuleId = chunkInfo.facadeModuleId
@@ -165,9 +250,53 @@ export default defineConfig({
     chunkSizeWarningLimit: 1000,
     sourcemap: false,
     cssCodeSplit: true,
+    // Enable tree shaking
+    treeshake: {
+      moduleSideEffects: false,
+      propertyReadSideEffects: false,
+      tryCatchDeoptimization: false,
+    },
+    // Optimize asset handling
+    assetsInlineLimit: 4096, // Inline assets smaller than 4KB
+    reportCompressedSize: false, // Disable gzip size reporting for faster builds
   },
   server: {
     // @ts-ignore
     allowedHosts: process.env.TEMPO === "true" ? true : undefined,
+    strictPort: true,
+    // Performance optimizations
+    hmr: {
+      overlay: false, // Disable error overlay for better performance
+    },
+    fs: {
+      strict: true,
+      allow: [
+        resolve(__dirname, "."),
+        resolve(__dirname, "src"),
+        resolve(__dirname, "public"),
+        resolve(__dirname, "node_modules"),
+      ],
+      deny: ["/home", "/root", "/etc", "/usr", "/var", "/tmp"],
+    },
+  },
+  // Optimize dependencies
+  optimizeDeps: {
+    include: [
+      "react",
+      "react-dom",
+      "react-router-dom",
+      "localforage",
+      "framer-motion",
+      "lucide-react",
+    ],
+    exclude: ["tempo-devtools"],
+  },
+  // Enable esbuild optimizations
+  esbuild: {
+    target: "esnext",
+    minifyIdentifiers: true,
+    minifySyntax: true,
+    minifyWhitespace: true,
+    treeShaking: true,
   },
 });

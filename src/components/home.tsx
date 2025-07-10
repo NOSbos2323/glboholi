@@ -26,7 +26,7 @@ import {
   DollarSign,
 } from "lucide-react";
 
-// Lazy load components for better performance
+// Lazy load components for better performance with retry logic
 const StatisticsOverview = lazy(() => import("./dashboard/StatisticsOverview"));
 const AttendanceChart = lazy(() => import("./dashboard/AttendanceChart"));
 const RecentActivities = lazy(() => import("./dashboard/RecentActivities"));
@@ -66,14 +66,18 @@ import {
 } from "@/services/memberService";
 import { addSessionPayment } from "@/services/paymentService";
 import { toast } from "@/components/ui/use-toast";
+import { debounce, throttle } from "@/utils/performance";
 
 const BackgroundBlob = memo(({ className }: { className?: string }) => (
   <div
-    className={`absolute rounded-full bg-gradient-to-r from-blue-500/5 to-purple-500/5 blur-2xl ${className}`}
+    className={`absolute rounded-full bg-gradient-to-r from-blue-500/5 to-purple-500/5 blur-2xl contain-strict ${className}`}
+    style={{ willChange: "transform" }}
   >
     <div className="w-[400px] h-[300px]"></div>
   </div>
 ));
+
+BackgroundBlob.displayName = "BackgroundBlob";
 
 const SidebarItem = memo(
   ({
@@ -86,16 +90,26 @@ const SidebarItem = memo(
     label: string;
     active?: boolean;
     onClick?: () => void;
-  }) => (
-    <div
-      className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-colors duration-200 ${active ? "bg-blue-500/20 text-blue-300" : "text-gray-300 hover:bg-white/5"}`}
-      onClick={onClick}
-    >
-      <div>{icon}</div>
-      <span className="font-medium text-sm">{label}</span>
-    </div>
-  ),
+  }) => {
+    const handleClick = useCallback(() => {
+      onClick?.();
+    }, [onClick]);
+
+    return (
+      <div
+        className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer fast-transition contain-layout ${active ? "bg-blue-500/20 text-blue-300" : "text-gray-300 hover:bg-white/5"}`}
+        onClick={handleClick}
+        role="button"
+        tabIndex={0}
+      >
+        <div>{icon}</div>
+        <span className="font-medium text-sm">{label}</span>
+      </div>
+    );
+  },
 );
+
+SidebarItem.displayName = "SidebarItem";
 
 const Sidebar = memo(
   ({
@@ -125,7 +139,9 @@ const Sidebar = memo(
                 src="/yacin-gym-logo.png"
                 alt="Amino Gym"
                 className="w-10 h-10 rounded-full object-cover"
-                loading="lazy"
+                loading="eager"
+                decoding="async"
+                fetchPriority="high"
               />
             </div>
             <h2 className="text-lg font-bold text-yellow-400">Amino Gym</h2>

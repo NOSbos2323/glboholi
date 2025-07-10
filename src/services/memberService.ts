@@ -9,6 +9,8 @@ export interface Member {
   lastAttendance: string;
   imageUrl?: string;
   phoneNumber?: string;
+  phone?: string;
+  email?: string;
   membershipType?: string;
   membershipStartDate?: string;
   membershipEndDate?: string;
@@ -18,6 +20,7 @@ export interface Member {
   paymentStatus?: "paid" | "unpaid" | "partial";
   partialPaymentAmount?: number;
   note?: string;
+  profileImage?: string;
 }
 
 // Initialize the database with better configuration
@@ -322,7 +325,13 @@ export interface MemberActivity {
   memberId: string;
   memberName?: string;
   memberImage?: string;
-  activityType: "check-in" | "membership-renewal" | "payment" | "other";
+  activityType:
+    | "check-in"
+    | "membership-renewal"
+    | "payment"
+    | "registration"
+    | "membership-expiry"
+    | "other";
   timestamp: string;
   details: string;
 }

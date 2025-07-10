@@ -1,11 +1,14 @@
 /** @type {import('tailwindcss').Config} */
 module.exports = {
+  // Enable JIT mode for faster builds
+  mode: "jit",
   darkMode: ["class"],
   content: [
+    "./index.html",
+    "./src/**/*.{js,ts,jsx,tsx}",
     "./pages/**/*.{ts,tsx}",
     "./components/**/*.{ts,tsx}",
     "./app/**/*.{ts,tsx}",
-    "./src/**/*.{ts,tsx}",
   ],
   prefix: "",
   theme: {

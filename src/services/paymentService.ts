@@ -6,6 +6,7 @@ import { offlineStorage } from "@/utils/offlineStorage";
 export interface Payment {
   id: string;
   memberId: string;
+  memberName?: string;
   amount: number;
   date: string;
   subscriptionType: string;
@@ -234,6 +235,9 @@ export const addSessionPayment = async (
   const newPayment = await addPayment(payment);
 
   // Add activity for this session payment
+  // Import addActivity function
+  const { addActivity } = await import("./memberService");
+
   await addActivity({
     memberId,
     memberName,

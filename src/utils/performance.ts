@@ -1,4 +1,5 @@
 // Performance optimization utilities
+import React from "react";
 
 // Debounce function for search and input handling
 export const debounce = <T extends (...args: any[]) => any>(
@@ -127,8 +128,133 @@ export const registerServiceWorker = async () => {
 // Cache management
 export const clearOldCaches = async () => {
   if ("caches" in window) {
-    const cacheNames = await caches.keys();
-    const oldCaches = cacheNames.filter((name) => !name.includes("v1"));
-    await Promise.all(oldCaches.map((name) => caches.delete(name)));
+    try {
+      const cacheNames = await caches.keys();
+      const currentVersion = "amino-gym-v2";
+      const oldCaches = cacheNames.filter(
+        (name) =>
+          !name.includes(currentVersion) &&
+          (name.includes("amino-gym") || name.includes("v1")),
+      );
+      await Promise.allSettled(oldCaches.map((name) => caches.delete(name)));
+    } catch (error) {
+      console.warn("Cache cleanup failed:", error);
+    }
   }
+};
+
+// Enhanced resource preloading
+export const preloadCriticalResources = async () => {
+  const criticalResources = [
+    { href: "/yacin-gym-logo.png", as: "image" },
+    { href: "/success-sound.mp3", as: "audio" },
+  ];
+
+  const preloadPromises = criticalResources.map(({ href, as }) => {
+    return new Promise<void>((resolve) => {
+      // Check if already preloaded
+      const existingLink = document.querySelector(
+        `link[rel="preload"][href="${href}"]`,
+      );
+
+      if (existingLink) {
+        resolve();
+        return;
+      }
+
+      const link = document.createElement("link");
+      link.rel = "preload";
+      link.as = as;
+      link.href = href;
+      link.crossOrigin = "anonymous";
+
+      link.onload = () => resolve();
+      link.onerror = () => {
+        console.warn(`Failed to preload ${href}`);
+        resolve(); // Don't block on failed preloads
+      };
+
+      document.head.appendChild(link);
+
+      // Timeout after 5 seconds
+      setTimeout(() => resolve(), 5000);
+    });
+  });
+
+  await Promise.allSettled(preloadPromises);
+};
+
+// Virtual scrolling utility
+export const createVirtualList = <T>(
+  items: T[],
+  containerHeight: number,
+  itemHeight: number,
+  overscan: number = 5,
+) => {
+  const [scrollTop, setScrollTop] = React.useState(0);
+
+  const visibleStart = Math.floor(scrollTop / itemHeight);
+  const visibleEnd = Math.min(
+    visibleStart + Math.ceil(containerHeight / itemHeight),
+    items.length - 1,
+  );
+
+  const startIndex = Math.max(0, visibleStart - overscan);
+  const endIndex = Math.min(items.length - 1, visibleEnd + overscan);
+
+  const visibleItems = items.slice(startIndex, endIndex + 1);
+  const offsetY = startIndex * itemHeight;
+
+  return {
+    visibleItems,
+    startIndex,
+    endIndex,
+    offsetY,
+    totalHeight: items.length * itemHeight,
+    setScrollTop,
+  };
+};
+
+// Image optimization utility
+export const optimizeImageUrl = (
+  url: string,
+  width?: number,
+  quality?: number,
+) => {
+  if (url.includes("unsplash.com")) {
+    const params = new URLSearchParams();
+    if (width) params.set("w", width.toString());
+    if (quality) params.set("q", quality.toString());
+    params.set("auto", "format");
+    params.set("fit", "crop");
+
+    return `${url}${url.includes("?") ? "&" : "?"}${params.toString()}`;
+  }
+  return url;
+};
+
+// Component lazy loading with retry
+export const createLazyComponent = <T extends React.ComponentType<any>>(
+  importFn: () => Promise<{ default: T }>,
+  retries: number = 3,
+) => {
+  return React.lazy(async () => {
+    let lastError: Error;
+
+    for (let i = 0; i <= retries; i++) {
+      try {
+        return await importFn();
+      } catch (error) {
+        lastError = error as Error;
+        if (i < retries) {
+          // Wait before retrying (exponential backoff)
+          await new Promise((resolve) =>
+            setTimeout(resolve, Math.pow(2, i) * 1000),
+          );
+        }
+      }
+    }
+
+    throw lastError!;
+  });
 };
