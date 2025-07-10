@@ -3,15 +3,17 @@
   publish = "dist"
   command = "npm run build"
 
-# Headers for PWA and security
+# SPA routing - this must come first
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+# Headers for static assets
 [[headers]]
-  for = "/*"
+  for = "/assets/*"
   [headers.values]
-    X-Frame-Options = "DENY"
-    X-XSS-Protection = "1; mode=block"
-    X-Content-Type-Options = "nosniff"
-    Referrer-Policy = "strict-origin-when-cross-origin"
-    Cache-Control = "public, max-age=31536000"
+    Cache-Control = "public, max-age=31536000, immutable"
 
 # Service Worker headers
 [[headers]]
@@ -20,24 +22,12 @@
     Cache-Control = "no-cache"
     Service-Worker-Allowed = "/"
 
-# Manifest headers
+# Basic security headers (less restrictive)
 [[headers]]
-  for = "/manifest.json"
+  for = "/*"
   [headers.values]
-    Content-Type = "application/manifest+json"
-    Cache-Control = "public, max-age=86400"
-
-# Static assets caching
-[[headers]]
-  for = "/assets/*"
-  [headers.values]
-    Cache-Control = "public, max-age=31536000, immutable"
-
-# SPA routing
-[[redirects]]
-  from = "/*"
-  to = "/index.html"
-  status = 200
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
 
 # Environment variables
 [build.environment]
