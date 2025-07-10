@@ -1,16 +1,6 @@
 import React from "react";
 import { Routes, Route } from "react-router-dom";
 import { useRoutes } from "react-router-dom";
-// Import routes conditionally to avoid build errors
-let routes: any[] = [];
-try {
-  if (import.meta.env.VITE_TEMPO) {
-    routes = (await import("tempo-routes")).default;
-  }
-} catch (error) {
-  console.log("Tempo routes not available");
-  routes = [];
-}
 import { lazy, Suspense } from "react";
 import { createLazyComponent } from "./utils/performance";
 

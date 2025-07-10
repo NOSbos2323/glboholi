@@ -57,7 +57,7 @@ export default defineConfig({
           },
           {
             urlPattern: ({ request }) => request.destination === "document",
-            handler: "NetworkFirst", // Must use NetworkFirst with networkTimeoutSeconds
+            handler: "NetworkFirst",
             options: {
               cacheName: "pages-cache",
               networkTimeoutSeconds: 2,
